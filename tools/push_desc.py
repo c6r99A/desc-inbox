@@ -31,17 +31,16 @@ def api(method, url, data=None, token=""):
         return e.code, e.read().decode("utf-8")
 
 def pull_remote(token):
-    """拉远端现有内容; 优先 raw(匿名), 失败走 API"""
+    """拉远端现有内容; 优先 API(实时无CDN缓存), 失败才走 raw"""
+    code, out = api("GET", API + "?ref=" + BRANCH, token=token)
+    if code == 200:
+        j = json.loads(out)
+        return base64.b64decode(j["content"]).decode("utf-8"), j.get("sha")
     try:
         with urllib.request.urlopen(RAW, timeout=60) as r:
             return r.read().decode("utf-8"), None
-    except Exception:
-        pass
-    code, out = api("GET", API + "?ref=" + BRANCH, token=token)
-    if code != 200:
-        return None, "pull failed %s: %s" % (code, out[:200])
-    j = json.loads(out)
-    return base64.b64decode(j["content"]).decode("utf-8"), j.get("sha")
+    except Exception as e:
+        return None, "pull failed %s: %s" % (code, str(e)[:200])
 
 def key_of(block):
     lines = [l for l in block.strip().split("\n") if l.strip()]
