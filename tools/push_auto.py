@@ -44,6 +44,9 @@ def check(text):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "/data/workspace/desc.txt"
+    global PATH
+    if len(sys.argv) > 2:
+        PATH = sys.argv[2]
     if not os.path.exists(src):
         print("[FAIL] no file: " + src); return 1
     text = open(src, encoding="utf-8").read()
@@ -52,13 +55,17 @@ def main():
         print("[FAIL] check: " + "; ".join(errs[:5])); return 1
     n = len([b for b in text.strip().split("\n\n") if b.strip()])
     try:
-        cur = api("https://api.github.com/repos/" + REPO + "/contents/" + PATH + "?ref=" + BRANCH)
-        sha = cur["sha"]
+        try:
+            sha = api("https://api.github.com/repos/" + REPO + "/contents/" + PATH + "?ref=" + BRANCH)["sha"]
+        except Exception:
+            sha = None
     except Exception as e:
         print("[FAIL] read remote: " + str(e)[:80]); return 1
     payload = {"message": "desc update",
                "content": base64.b64encode(text.encode("utf-8")).decode(),
-               "sha": sha, "branch": BRANCH}
+               "branch": BRANCH}
+    if sha:
+        payload["sha"] = sha
     try:
         r = api("https://api.github.com/repos/" + REPO + "/contents/" + PATH, payload, "PUT")
     except Exception as e:
